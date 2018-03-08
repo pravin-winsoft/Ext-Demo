@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <link href = "https://cdnjs.cloudflare.com/ajax/libs/extjs/6.0.0/classic/theme-classic/resources/theme-classic-all.css" 
+         rel = "stylesheet" />
+      <script type = "text/javascript" 
+         src = "https://cdnjs.cloudflare.com/ajax/libs/extjs/6.0.0/ext-all.js"></script>
+      
+      <script type = "text/javascript">
+         Ext.require([
+            'Ext.form.*',
+            'Ext.Img',
+            'Ext.tip.QuickTipManager'
+         ]);
+
+         Ext.onReady(function() {
+            //Ext.tip.QuickTipManager.init();
+
+            var formPanel = Ext.widget('form', {
+               renderTo: Ext.getBody(),
+               frame: true,
+               width: 350,
+               bodyPadding: 10,
+               bodyBorder: true,
+               title: 'Account Registration',
+
+               items:[{
+                     xtype: 'textfield',
+                     name: 'username',
+                     fieldLabel: 'User Name',
+                     allowBlank: false,
+                     minLength: 6
+                  }, {
+                     xtype: 'textfield',
+                     name: 'email',
+                     fieldLabel: 'Email Address',
+                     vtype: 'email',
+                     allowBlank: false
+                  }, {
+                     xtype: 'textfield',
+                     name: 'password1',
+                     fieldLabel: 'Password',
+                     inputType: 'password',
+                     style: 'margin-top:15px',
+                     allowBlank: false,
+                     minLength: 8
+                  }, {
+                     xtype: 'textfield',
+                     name: 'password2',
+                     fieldLabel: 'Repeat Password',
+                     inputType: 'password',
+                     allowBlank: false,
+                     /**
+                      * Custom validator implementation - checks that the value matches what was entered into
+                      * the password1 field.
+                      */
+                     validator: function(value) {
+                        var password1 = this.previousSibling('[name=password1]');
+                        return (value === password1.getValue()) ? true : 'Passwords do not match.'
+                     }
+                  },{
+                     xtype: 'checkboxfield',
+                     name: 'acceptTerms',
+                     fieldLabel: 'Terms of Use',
+                     hideLabel: true,
+                     style: 'margin-top:15px',
+                     boxLabel: 'I have read and accept the <a href="#" class="terms">Terms of Use</a>.',
+                     // Listener to open the Terms of Use page link in a modal window
+                     listeners: {
+                        click: {
+                           element: 'boxLabelEl',
+                           fn: function(e) {
+                              var target = e.getTarget('.terms'), win;                              
+                              e.preventDefault();
+
+                              if (target) {
+                                 win = Ext.getCmp('termsWindow') || Ext.widget('window', {
+                                    id: 'termsWindow',
+                                    closeAction: 'hide',
+                                    title: 'Terms of Use',
+                                    modal: true,
+                                    contentEl: Ext.getDom('legalese'),
+                                    width: 700,
+                                    height: 400,
+                                    bodyStyle: 'padding: 10px 20px;',
+                                    autoScroll: true,
+                                    
+                                    buttons: [{
+                                       text: 'Decline',
+                                       handler: function() {
+                                          this.up('window').close();
+                                          formPanel.down('[name=acceptTerms]').setValue(false);
+                                       }
+                                    }, {
+                                       text: 'Accept',
+                                       handler: function() {
+                                          this.up('window').close();
+                                          formPanel.down('[name=acceptTerms]').setValue(true);
+                                       }
+                                    }]
+                                 });
+                                 win.show();
+                              }
+                           }
+                        }
+                     },
+                     // Custom validation logic - requires the checkbox to be checked
+                     getErrors: function() {
+                        return this.getValue() ? [] : ['You must accept the Terms of Use']
+                     }
+               }],
+
+              dockedItems: [{
+               cls: Ext.baseCSSPrefix + 'dd-drop-ok',
+               xtype: 'container',
+               dock: 'bottom',
+               layout: {
+                  type: 'hbox',
+                  align: 'middle'
+               },
+               padding: '10 10 5',
+
+               items: [{
+                  xtype: 'component',
+                  id: 'formErrorState',
+                  invalidCls: Ext.baseCSSPrefix + 'form-invalid-icon',
+                  validCls: Ext.baseCSSPrefix + 'dd-drop-icon',
+                  baseCls: 'form-error-state',
+                  flex: 1,
+                  validText: 'Form is valid',
+                  invalidText: 'Form has errors',
+                  tipTpl: Ext.create('Ext.XTemplate', '<ul class="' + Ext.plainListCls + '"><tpl for="."><li><span class="field-name">{name}</span>: <span class="error">{error}</span></li></tpl></ul>'),
+
+                  getTip: function() {
+                     var tip = this.tip;
+                     if (!tip) {
+                        tip = this.tip = Ext.widget('tooltip', {
+                           target: this.el,
+                           title: 'Error Details:',
+                           minWidth: 200,
+                           autoHide: false,
+                           anchor: 'top',
+                           mouseOffset: [-11, -2],
+                           closable: true,
+                           constrainPosition: false,
+                           cls: 'errors-tip'
+                        });
+                        tip.show();
+                     }
+                     return tip;
+                  },
+
+                  setErrors: function(errors) {
+                     var me = this,
+                        tip = me.getTip();
+
+                     errors = Ext.Array.from(errors);
+
+                     // Update CSS class and tooltip content
+                     if (errors.length) {
+                        me.addCls(me.invalidCls);
+                        me.removeCls(me.validCls);
+                        me.update(me.invalidText);
+                        tip.setDisabled(false);
+                        tip.update(me.tipTpl.apply(errors));
+                     } else {
+                        me.addCls(me.validCls);
+                        me.removeCls(me.invalidCls);
+                        me.update(me.validText);
+                        tip.setDisabled(true);
+                        tip.hide();
+                     }
+                  }
+               }, {
+                  xtype: 'button',
+                  formBind: true,
+                  disabled: true,
+                  text: 'Submit Registration',
+                  width: 140,
+                  handler: function() {
+                     var form = this.up('form').getForm();
+
+                     /* Normally we would submit the form to the server here and handle the response...
+                     form.submit({
+                        clientValidation: true,
+                        url: 'register.php',
+                        success: function(form, action) {
+                           //...
+                        },
+                        failure: function(form, action) {
+                           //...
+                        }
+                     });
+                     */
+
+                     if (form.isValid()) {
+                        Ext.Msg.alert('Submitted Values', form.getValues(true));
+                     }
+                  }
+               }]
+            }]
+         });
+
+      });
+      </script>
+   </head>
+   
+   <body>
+      
+   </body>
+</html>
